@@ -1,0 +1,112 @@
+libname proj1 "/home/u60739998/BS 723/Project 1";
+
+proc format;
+	value htnf 1="Yes" 2="No" .="Unknown";
+	value htnmedf 1="Yes" 2="No" .="Unknown";
+	value mif 1="Yes" 2="No" .="Unknown";
+	value copdf 1="Yes" 2="No" .="Unknown";
+	value cancerf 1="Yes" 2="No" .="Unknown";
+	value diabetesf 1="Yes" 2="No" 3="Borderline" .="Unknown";
+	value sexf 1="Male" 2="Female";
+run;
+
+data nhpi;
+	set proj1.proj1_2022;
+	
+	if htn in(7, 8, 9) then htn=.;
+	if htnmed in(7, 8, 9) then htnmed=.;
+	if mi in(7, 8, 9) then mi=.;
+	if copd in(7, 8, 9) then copd=.;
+	if cancer in(7, 8, 9) then cancer=.;
+	if diabetes in(7, 8, 9) then diabetes=.;
+	
+	if height in(96, 97, 98, 99) then height=.;
+	if weight in(996, 997, 998, 999) then weight=.;
+	BMI = (weight*703)/(height**2);
+	
+	label id="Participant ID" age="Participant age" sex="Participant sex" mar_stat="Marital status"
+	height="Height in inches" weight="Weight (pounds)" htn="Hypertension?" hybplev="Blood pressure level" 
+	htnmed="Hypertension medicine?" mi="Heart attack?" smkstat2="Smoking status:" 
+	copd="COPD (Chronic obstructive pulmonary disease)?" cancer="Cancer?" diabetes="Diabetes?" 
+	bmi="Body mass index (kg/m2)";
+	
+	if smkstat2 in(1, 2, 5) then SMOKING="Current";
+	else if smkstat2= 3 then SMOKING="Former";
+	else if smkstat2= 4 then SMOKING="Never";
+	else if smkstat2= 9 then SMOKING="Unknown";
+	
+	format htn htnf. htnmed htnmedf. mi mif. copd copdf. cancer cancerf. diabetes diabetesf. sex sexf.;
+	
+	if mar_stat=4 then mar_stat=0;
+	else if mar_stat in(2,3) then mar_stat=1;
+	else if mar_stat in(1,5) then mar_stat=2;
+	else if mar_stat=9 then mar_stat=.;
+run;
+
+/* table data for quantitative variables */
+proc means data=nhpi;
+	var age height weight bmi;
+	where sex=1;
+run;
+
+proc means data=nhpi;
+	var age height weight bmi;
+	where sex=2;
+run;
+
+/* get p-values comparing males to females for quant. variables */
+proc ttest data=nhpi;
+	class sex;
+	var age height weight bmi;
+run;
+
+/* table data for qualitative variables + missing */
+proc freq data=nhpi;
+	tables sex*mar_stat sex*htn sex*htnmed sex*mi sex*smoking sex*copd sex*cancer sex*diabetes / missing;
+run;
+
+/* run chi-sq test for qual. variables to get p-values */
+proc freq data=nhpi;
+	tables sex*mar_stat sex*htn sex*htnmed sex*mi sex*smoking sex*copd sex*cancer sex*diabetes / expected chisq fisher nocol nopercent;
+run;
+
+/* statistical testing */
+
+data nhpi2;
+	set nhpi;
+run;
+
+proc sort data=nhpi2;
+	by sex;
+run;
+
+/* one sample t-test of means */
+proc ttest data=nhpi2 h0=27.80 alpha=0.05;
+	by sex;
+	var bmi;
+run;
+
+proc ttest data=nhpi2 h0=27.51 alpha=0.05;
+	by sex;
+	var bmi;
+run;
+
+/* two sample t test of means/independent samples t-test*/
+proc ttest data=nhpi;
+	class sex;
+	var bmi;
+run;
+
+/* chi-square test */
+data nhpi3;
+	set nhpi;
+run;
+
+proc sort data=nhpi3;
+	by smoking;
+run;
+
+proc freq data=nhpi3;
+	by smoking;
+	tables sex*cancer / expected measures chisq fisher nocol nopercent;
+run;
